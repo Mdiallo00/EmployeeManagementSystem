@@ -10,6 +10,18 @@ public abstract class Person{
     public String  getFname(){
         return Fname;
     }
+    public void SetFname(String Newfname){
+        this.Fname=Newfname;
+
+    }
+
+    public void setLname(String NewLname){
+        this.Lname=NewLname;
+    }
+    public void  setEmail(String NewEmail){
+        this.Email=NewEmail;
+    }
+
     public String getLname(){
         return Lname;
     }

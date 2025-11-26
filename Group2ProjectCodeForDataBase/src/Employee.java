@@ -16,20 +16,33 @@ public class Employee extends Person{
     public int getID(){
         return ID;
     }
+
     public double getSalary(){
         return Salary;
 
     }
-    public String SSN(){
+    public void setSalary(double NewSalary){
+        this.Salary=NewSalary;
+    }
+    public String getSSN(){
         return SSN;
     }
+    public void setSSN(String NewSSN){
+        this.SSN=NewSSN;
+    }
+
 
     public String getHireDate(){
         return HireDate;
     }
+    public void setHireDate(String NewHireDate){
+        this.HireDate=NewHireDate;
+    }
+
 
     @Override
     public String GetRole(String Role) {
-        return Fname + "Role is "+ Role;
+        return "Full Time Employee";
+
     }
 }

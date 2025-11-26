@@ -2,14 +2,21 @@ public interface IEmployeeDao {
 
     void Serach_Employee(String fname);
 
-    void Update_Employee(int id,String setType);
+     void Update_Employee(Employee emp);
 
 
-    void applySalaryRaise(Employee salary);
+     void applySalaryRaise(double percentage, double lowerBound, double upperBound);
 
-    void getDivsionReport();
+    public void printDivisionReport();
 
-    void AddEmployee(Employee employee );
+    public void addEmployee(Employee emp);
 
-    void GetEmployeeID(int id);
+    public void printEmployeeHistoryReport(int targetId) ;
+
+
+    public void printJobTitleReport();
+
+
+
+        Employee getEmployeeById(int id);
 }
