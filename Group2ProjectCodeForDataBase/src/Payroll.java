@@ -30,7 +30,7 @@
         this.healthCare = healthCare;
     }
 
-    // Getters and setters…
+    
 
 
 

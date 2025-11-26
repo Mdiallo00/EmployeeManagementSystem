@@ -18,7 +18,7 @@ public class UpdateSalary implements IEmployeeDao {
         try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setDouble(1, percentage);     // percentage increase
+            stmt.setDouble(1, percentage);     
             stmt.setDouble(2, lowerBound);     
             stmt.setDouble(3, upperBound);     
 
