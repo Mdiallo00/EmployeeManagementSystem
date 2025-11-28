@@ -1,22 +1,22 @@
+import java.sql.SQLException;
+
 public interface IEmployeeDao {
 
-    void Serach_Employee(String fname);
+    void searchEmployee(String searchKey) throws SQLException;
 
-     void Update_Employee(Employee emp);
-
-
-     void applySalaryRaise(double percentage, double lowerBound, double upperBound);
-
-    public void printDivisionReport();
-
-    public void addEmployee(Employee emp);
-
-    public void printEmployeeHistoryReport(int targetId) ;
+    void updateEmployee(Employee emp) throws SQLException;
 
 
-    public void printJobTitleReport();
+    void applySalaryRaise(double percentage, double minSalary, double maxSalary);
+    int addEmployee(Employee emp) throws SQLException;
+
+    int deleteEmployee(int id) throws SQLException;
 
 
+    void printDivisionReport() throws SQLException;
 
-        Employee getEmployeeById(int id);
+    void printEmployeeHistoryReport(int targetId) throws SQLException;
+
+    void printJobTitleReport() throws SQLException;
 }
+
