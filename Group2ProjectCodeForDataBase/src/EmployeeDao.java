@@ -1,114 +1,474 @@
-import java.net.ConnectException;
 import java.sql.*;
+import java.util.ArrayList;
 
 public class EmployeeDao implements IEmployeeDao {
+    // Database Credentials
     private static final String URL = "jdbc:mysql://localhost:3306/group2erdb";
-    private static final String user = "root";
-    private static final String Password = "Bangster1862";
+    private static final String USER = "root";
+    private static final String PASSWORD = "Bangster1862";
 
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, user, Password);
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
+    // --- 1. SEARCH ---
     @Override
-    public void Serach_Employee(String nameToFind) {
-        String sql = "SELECT * FROM employees WHERE Fname = ?";
+    public void searchEmployee(String searchKey) {
+        String sql = "SELECT e.*, d.Name as division_name, jt.job_title " +
+                "FROM employees e " +
+                "LEFT JOIN employee_division ed ON e.empid = ed.empid " +
+                "LEFT JOIN division d ON ed.div_ID = d.ID " +
+                "LEFT JOIN employee_job_titles ejt ON e.empid = ejt.empid " +
+                "LEFT JOIN job_titles jt ON ejt.job_title_id = jt.job_title_id " +
+                "WHERE " +
+                "e.Fname LIKE ? OR " +
+                "e.Lname LIKE ? OR " +
+                "CONCAT(e.Fname, ' ', e.Lname) LIKE ? OR " +
+                "e.SSN = ? OR " +
+                "CAST(e.empid AS CHAR) = ?";
+
 
         try (Connection conn = getConnection();
              PreparedStatement psmt = conn.prepareStatement(sql)) {
 
-            psmt.setString(1, nameToFind);
+            String searchPattern = "%" + searchKey + "%";
 
-            // 3. GET RESULTS
+            psmt.setString(1, searchPattern);
+            psmt.setString(2, searchPattern);
+            psmt.setString(3, searchPattern);
+            psmt.setString(4, searchKey);
+            psmt.setString(5, searchKey);
+
             try (ResultSet resultSet = psmt.executeQuery()) {
-
                 boolean foundAny = false;
 
                 while (resultSet.next()) {
                     foundAny = true;
 
-                    int empid = resultSet.getInt("empid");
-                    String fName = resultSet.getString("Fname");
-                    String lName = resultSet.getString("Lname");
-                    String email = resultSet.getString("email");
-                    String hireDate = resultSet.getString("HireDate");
-                    double salary = resultSet.getDouble("Salary");
-
+                    // Extract all data from result set
+                    String firstName = resultSet.getString("Fname");
+                    String lastName = resultSet.getString("Lname");
+                    int empId = resultSet.getInt("empid");
                     String ssn = resultSet.getString("SSN");
+                    String email = resultSet.getString("email");
+                    double salary = resultSet.getDouble("Salary");
+                    String hireDate = resultSet.getString("HireDate");
+                    String division = resultSet.getString("division_name");
+                    String jobTitle = resultSet.getString("job_title");
 
+                    // Display formatted results
                     System.out.println("--------------------------------------------------");
-                    System.out.println("FOUND EMPLOYEE: " + fName + " " + lName);
-                    System.out.println("   ID: " + empid + " | SSN: " + ssn);
-                    System.out.println("   Email: " + email);
-                    System.out.println("   Hired: " + hireDate);
-                    // "%.2f" formats the salary to show 2 decimal places (cents)
-                    System.out.printf("   Salary: $%.2f%n", salary);
+                    System.out.println("FOUND EMPLOYEE: " + firstName + " " + lastName);
+                    System.out.println("ID: " + empId + " | SSN: " + ssn);
+                    System.out.println("Email: " + email);
+                    System.out.println("Hired: " + hireDate);
+                    System.out.printf("Salary: $%.2f%n", salary);
+                    System.out.println("Division: " + (division != null ? division : "Not assigned"));
+                    System.out.println("Job Title: " + (jobTitle != null ? jobTitle : "Not assigned"));
                     System.out.println("--------------------------------------------------");
                 }
 
                 if (!foundAny) {
-                    System.out.println("No records found for first name: " + nameToFind);
+                    System.out.println(" No records found for: " + searchKey);
                 }
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+    // --- 2. UPDATE ---
     @Override
-    public void Update_Employee(int ID, String ColumnName) {
-        String SQL = "Update employee SET " + ColumnName + "WHERE empid = ?";
-        try {
-            Connection conn = getConnection();
-            PreparedStatement psmt = conn.prepareStatement(SQL);
-            ResultSet resultSet = se
-
-            try {
-                psmt.setString(1, ColumnName);
-
-                if ( psmt.setInt(2, ID);)
-
-
-            }
-
-        } catch (SQLException e) {
-
-
-        }
-    }
-
-    // FIXED 1: Change 'void' to 'Employee' so it can actually return the object
-    @Override
-    public Employee getEmployeeById(int id) {
-
-        String SQL = "SELECT * FROM employees WHERE empid = ?";
+    public void updateEmployee(Employee emp) {
+        String sql = "UPDATE employees SET Fname=?, Lname=?, email=?, Salary=?, SSN=?, HireDate=? WHERE empid=?";
 
         try (Connection conn = getConnection();
-             PreparedStatement psmt = conn.prepareStatement(SQL)) {
+             PreparedStatement psmt = conn.prepareStatement(sql)) {
 
-            psmt.setInt(1, id);
+            psmt.setString(1, emp.getFname());
+            psmt.setString(2, emp.getLname());
+            psmt.setString(3, emp.getEmail());
+            psmt.setDouble(4, emp.getSalary());
+            psmt.setString(5, emp.getSSN());
+            psmt.setString(6, emp.getHireDate());
+            psmt.setInt(7, emp.getID()); // Where clause
 
-            ResultSet rs = psmt.executeQuery();
-
-            if(rs.next()){
-                // FIXED 3: SSN must be getString (to keep leading zeros)
-                // Ensure this order matches your Employee constructor exactly!
-                return new Employee(
-                        rs.getString("Fname"),
-                        rs.getString("Lname"),
-                        rs.getString("email"),
-                        rs.getInt("empid"),
-                        rs.getDouble("Salary"),
-                        rs.getString("SSN"), // Changed from getInt
-                        rs.getString("HireDate")
-                );
+            int rowsUpdated = psmt.executeUpdate();
+            if (rowsUpdated > 0) {
+                System.out.println(" Employee updated successfully!");
+            } else {
+                System.out.println(" Update failed: ID " + emp.getID() + " not found.");
             }
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
 
-        return null;
+    // --- 3. SALARY RAISE ---
+    @Override
+    public void applySalaryRaise(double percentage, double minSalary, double maxSalary) {
+        // SQL: Updates salary if it is Greater/Equal to Min AND Strictly Less Than Max
+        String sql = "UPDATE employees SET Salary = Salary * (1.0 + (? / 100.0)) " +
+                "WHERE Salary >= ? AND Salary < ?";
+
+        Connection conn = null;
+        try {
+            conn = getConnection();
+            conn.setAutoCommit(false); // Start Transaction
+
+            try (PreparedStatement psmt = conn.prepareStatement(sql)) {
+                psmt.setDouble(1, percentage);
+                psmt.setDouble(2, minSalary);
+                psmt.setDouble(3, maxSalary);
+
+                int affected = psmt.executeUpdate();
+
+                conn.commit(); // Commit changes
+                System.out.println("✅ Salary raise applied!");
+                System.out.printf("   Range: $%.2f to $%.2f%n", minSalary, maxSalary);
+                System.out.println("   Employees updated: " + affected);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("❌ Database Error: Transaction failed.");
+            if (conn != null) {
+                try {
+                    conn.rollback(); // Rollback on error
+                    System.out.println("   Changes rolled back.");
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+    }
+
+//    public Employee getEmployeeById(int id) {
+//        String sql = "SELECT * FROM employees WHERE empid = ?";
+//
+//        try (Connection conn = getConnection();
+//             PreparedStatement psmt = conn.prepareStatement(sql)) {
+//
+//            psmt.setInt(1, id);
+//
+//            try (ResultSet rs = psmt.executeQuery()) {
+//                if (rs.next()) {
+//                    return new Employee(
+//                            rs.getString("Fname"),
+//                            rs.getString("Lname"),
+//                            rs.getString("email"),
+//                            rs.getInt("empid"),
+//                            rs.getDouble("Salary"),
+//                            rs.getString("SSN"),
+//                            rs.getString("HireDate")
+//                    );
+//                }
+//            }
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
+//        return null;
+//    }
+
+    public int deleteEmployee(int targetId) throws SQLException {
+        // We must delete from child tables FIRST to avoid Foreign Key errors
+        String deleteDivisions = "DELETE FROM employee_division WHERE empid = ?";
+        String deleteJobs = "DELETE FROM employee_job_titles WHERE empid = ?";
+        String deletePayroll = "DELETE FROM payroll WHERE empid = ?";
+        String deleteEmployee = "DELETE FROM employees WHERE empid = ?";
+
+        // Use a single connection for all commands
+        try (Connection conn = getConnection()) {
+
+            // 1. Delete Division Links
+            try (PreparedStatement psmt = conn.prepareStatement(deleteDivisions)) {
+                psmt.setInt(1, targetId);
+                psmt.executeUpdate();
+            }
+
+            // 2. Delete Job Title Links
+            try (PreparedStatement psmt = conn.prepareStatement(deleteJobs)) {
+                psmt.setInt(1, targetId);
+                psmt.executeUpdate();
+            }
+
+            try (PreparedStatement psmt = conn.prepareStatement(deletePayroll)) {
+                psmt.setInt(1, targetId);
+                psmt.executeUpdate();
+            }
+            try (PreparedStatement psmt = conn.prepareStatement(deleteEmployee)) {
+                psmt.setInt(1, targetId);
+                int rowsDeleted = psmt.executeUpdate();
+
+                if (rowsDeleted > 0) {
+                    System.out.println(" Employee ID " + targetId + " and all associated records deleted.");
+                } else {
+                    System.out.println(" Employee ID " + targetId + " not found.");
+                }
+                return rowsDeleted;
+            }
+        } catch (SQLException e) {
+            System.err.println("Database Error during deletion: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    @Override
+    public int addEmployee(Employee emp) {
+        // NOTE: We do NOT insert 'empid'. The database auto-increments it.
+        String sql = "INSERT INTO employees (Fname, Lname, Email, Salary, SSN, HireDate) VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            psmt.setString(1, emp.getFname());
+            psmt.setString(2, emp.getLname());
+            psmt.setString(3, emp.getEmail());
+            psmt.setDouble(4, emp.getSalary());
+            psmt.setString(5, emp.getSSN());
+            psmt.setString(6, emp.getHireDate());
+
+            int affectedRows = psmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = psmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int newId = generatedKeys.getInt(1);
+                        emp.setId(newId);
+                        return newId;
+                    }
+                }
+            }
+            return -1; // Failed to retrieve ID
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1; // Failed to insert
+        }
+    }
+
+    // --- 7. GET ALL (Returns List) ---
+    public ArrayList<Employee> getAllEmployees() throws SQLException {
+        ArrayList<Employee> employeesList = new ArrayList<>();
+        String sql = "SELECT * FROM employees";
+
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql);
+             ResultSet resultSet = psmt.executeQuery()) {
+
+            while (resultSet.next()) {
+                Employee employee = new Employee(
+                        resultSet.getString("Fname"),
+                        resultSet.getString("Lname"),
+                        resultSet.getString("email"),
+                        resultSet.getInt("empid"),
+                        resultSet.getDouble("Salary"),
+                        resultSet.getString("SSN"),
+                        resultSet.getString("HireDate")
+                );
+                employeesList.add(employee);
+            }
+            return employeesList;
+
+        } catch (SQLException e) {
+            System.err.println("Error reading employee table " + e.getMessage());
+            throw e;
+        }
+    }
+
+    // --- REPORTS ---
+    public void printEmployeeHistoryReport(int targetId) {
+        String sql = "SELECT e.Fname, e.Lname, e.SSN, p.pay_date, p.earnings " +
+                "FROM employees e JOIN payroll p ON e.empid = p.empid " +
+                "WHERE e.empid = ? ORDER BY p.pay_date DESC";
+
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql)) {
+
+            psmt.setInt(1, targetId);
+            try (ResultSet rs = psmt.executeQuery()) {
+                System.out.println("\n--- PAY HISTORY FOR ID " + targetId + " ---");
+                boolean found = false;
+                while(rs.next()) {
+                    found = true;
+                    // Simple output logic
+                    System.out.printf("Date: %s | Pay: $%.2f%n", rs.getString("pay_date"), rs.getDouble("earnings"));
+                }
+                if(!found) System.out.println("No history found.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void printJobTitleReport() {
+        String sql = "SELECT jt.job_title, SUM(p.earnings) AS Total FROM job_titles jt " +
+                "JOIN employee_job_titles ejt ON jt.job_title_id = ejt.job_title_id " +
+                "JOIN employees e ON ejt.empid = e.empid " +
+                "JOIN payroll p ON e.empid = p.empid GROUP BY jt.job_title";
+        runReport(sql, "JOB TITLE");
+    }
+
+    public void printDivisionReport() {
+        String sql = "SELECT d.Name, SUM(p.earnings) AS Total FROM division d " +
+                "JOIN employee_division ed ON d.ID = ed.div_ID " +
+                "JOIN employees e ON ed.empid = e.empid " +
+                "JOIN payroll p ON e.empid = p.empid GROUP BY d.Name";
+        runReport(sql, "DIVISION");
+    }
+
+    private void runReport(String sql, String header) {
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql);
+             ResultSet rs = psmt.executeQuery()) {
+
+            System.out.printf("%-20s | %s%n", header, "TOTAL PAY");
+            System.out.println("------------------------------");
+            while(rs.next()) {
+                System.out.printf("%-20s | $%,.2f%n", rs.getString(1), rs.getDouble(2));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void printOutEmployeeTable() {
+        String sql = "SELECT e.empid, e.Fname, e.Lname, e.email, e.Salary, e.SSN, e.HireDate, " +
+                "d.Name as DivName, jt.job_title as JobTitle " +
+                "FROM employees e " +
+                "LEFT JOIN employee_division ed ON e.empid = ed.empid " +
+                "LEFT JOIN division d ON ed.div_ID = d.ID " +
+                "LEFT JOIN employee_job_titles ejt ON e.empid = ejt.empid " +
+                "LEFT JOIN job_titles jt ON ejt.job_title_id = jt.job_title_id " +
+                "ORDER BY e.empid ASC";
+
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql);
+             ResultSet rs = psmt.executeQuery()) {
+
+            System.out.println("\n=========================================================================================================================================");
+            // Print Table Header
+            System.out.printf("%-5s | %-20s | %-25s | %-12s | %-11s | %-12s | %-15s | %-15s%n",
+                    "ID", "NAME", "EMAIL", "SALARY", "SSN", "HIRED", "DIVISION", "JOB TITLE");
+            System.out.println("-----------------------------------------------------------------------------------------------------------------------------------------");
+
+            while (rs.next()) {
+                int id = rs.getInt("empid");
+                String name = rs.getString("Fname") + " " + rs.getString("Lname");
+                String email = rs.getString("email");
+                double salary = rs.getDouble("Salary");
+                String ssn = rs.getString("SSN");
+                String hired = rs.getString("HireDate");
+
+                String division = rs.getString("DivName");
+                if (division == null) division = "N/A";
+
+                String job = rs.getString("JobTitle");
+                if (job == null) job = "N/A";
+
+                System.out.printf("%-5d | %-20s | %-25s | $%-11.2f | %-11s | %-12s | %-15s | %-15s%n",
+                        id, name, email, salary, ssn, hired, division, job);
+            }
+            System.out.println("=========================================================================================================================================\n");
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void printOutDivision() {
+        String sql = "SELECT ID, Name FROM division ORDER BY ID ASC";
+        printOptionList(sql, "DIVISIONS");
+    }
+
+    public void printOutJobtitle() {
+        String sql = "SELECT job_title_id, job_title FROM job_titles ORDER BY job_title_id ASC";
+        printOptionList(sql, "JOB TITLES");
+    }
+
+    // Helper to print options
+    private void printOptionList(String sql, String title) {
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql);
+             ResultSet rs = psmt.executeQuery()) {
+            System.out.println("\n--- " + title + " ---");
+            while (rs.next()) {
+                System.out.printf("%d. %s%n", rs.getInt(1), rs.getString(2));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void linkingdivision(int empid, int divId) {
+        String sql = "INSERT INTO employee_division (empid, div_ID) VALUES (?, ?)";
+        executeLinkInsert(sql, empid, divId);
+    }
+
+    public void linkemployejobtitles(int empid, int jobTitleId) {
+        String sql = "INSERT INTO employee_job_titles (empid, job_title_id) VALUES (?, ?)";
+        executeLinkInsert(sql, empid, jobTitleId);
+    }
+
+    // Helper to avoid duplicate code for linking
+    private void executeLinkInsert(String sql, int p1, int p2) {
+        try (Connection conn = getConnection();
+             PreparedStatement psmt = conn.prepareStatement(sql)) {
+            psmt.setInt(1, p1);
+            psmt.setInt(2, p2);
+            psmt.executeUpdate();
+            System.out.println(" Link created successfully.");
+        } catch (SQLException e) {
+            System.out.println(" Linking Error: " + e.getMessage());
+        }
+    }
+
+    public void updateEmployeeDivision(int empId, int newDivId) {
+        String deleteSql = "DELETE FROM employee_division WHERE empid = ?";
+        String insertSql = "INSERT INTO employee_division (empid, div_ID) VALUES (?, ?)";
+
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement delStmt = conn.prepareStatement(deleteSql)) {
+                delStmt.setInt(1, empId);
+                delStmt.executeUpdate();
+            }
+            try (PreparedStatement insStmt = conn.prepareStatement(insertSql)) {
+                insStmt.setInt(1, empId);
+                insStmt.setInt(2, newDivId);
+                insStmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateEmployeeJobTitle(int empId, int newJobId) {
+        String deleteSql = "DELETE FROM employee_job_titles WHERE empid = ?";
+        String insertSql = "INSERT INTO employee_job_titles (empid, job_title_id) VALUES (?, ?)";
+
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement delStmt = conn.prepareStatement(deleteSql)) {
+                delStmt.setInt(1, empId);
+                delStmt.executeUpdate();
+            }
+            try (PreparedStatement insStmt = conn.prepareStatement(insertSql)) {
+                insStmt.setInt(1, empId);
+                insStmt.setInt(2, newJobId);
+                insStmt.executeUpdate();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
